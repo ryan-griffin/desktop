@@ -1,5 +1,5 @@
 diff --git a/browser/components/sessionstore/SessionStore.sys.mjs b/browser/components/sessionstore/SessionStore.sys.mjs
-index 71921cec2b6aa0f103856c31254fd6c4affefccb..ed13d7e2aa5ff1199872fedbc26494aae463ace4 100644
+index 3b501bb6af2fd6eb562e6b8f6263864d278e0f7c..f3447b04022c2cec5bbbf46e240f4efbdf61e909 100644
 --- a/browser/components/sessionstore/SessionStore.sys.mjs
 +++ b/browser/components/sessionstore/SessionStore.sys.mjs
 @@ -129,6 +129,9 @@ const TAB_EVENTS = [
@@ -358,7 +358,7 @@ index 71921cec2b6aa0f103856c31254fd6c4affefccb..ed13d7e2aa5ff1199872fedbc26494aa
            Glean.sessionRestore.shutdownFlushAllOutcomes.timed_out.add(1);
            deferred.resolve();
          }
-@@ -8552,6 +8614,7 @@ var SessionStoreInternal = {
+@@ -8554,6 +8616,7 @@ var SessionStoreInternal = {
      if (
        !savedTabGroupState.tabs.length ||
        this.getSavedTabGroup(savedTabGroupState.id)

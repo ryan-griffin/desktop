@@ -1,5 +1,5 @@
 diff --git a/browser/components/tabbrowser/TabUnloader.sys.mjs b/browser/components/tabbrowser/TabUnloader.sys.mjs
-index aefccef39f0b81176a5710a794e8a5e2650d6507..53c838b3bc322cadee4ef9b411d02fc0af8c35e5 100644
+index aefccef39f0b81176a5710a794e8a5e2650d6507..fd8bc6ca947d49c00e898209bae13406dd28fd44 100644
 --- a/browser/components/tabbrowser/TabUnloader.sys.mjs
 +++ b/browser/components/tabbrowser/TabUnloader.sys.mjs
 @@ -52,7 +52,7 @@ let CRITERIA_WEIGHT = 1;
@@ -16,7 +16,7 @@ index aefccef39f0b81176a5710a794e8a5e2650d6507..53c838b3bc322cadee4ef9b411d02fc0
    *iterateTabs() {
      for (let win of Services.wm.getEnumerator("navigator:browser")) {
 -      for (let tab of win.gBrowser.tabs) {
-+      for (let tab of win.gZenWorkspaces.allStoredTabs) {
++      for (let tab of win.gZenWorkspaces.allStoredTabs.filter(t => t._zenContentsVisible)) {
          yield { tab, gBrowser: win.gBrowser };
        }
      }

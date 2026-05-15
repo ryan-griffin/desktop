@@ -13,6 +13,7 @@ ChromeUtils.defineESModuleGetters(lazy, {
   TabStateFlusher: "resource:///modules/sessionstore/TabStateFlusher.sys.mjs",
   // eslint-disable-next-line mozilla/valid-lazy
   ZenSessionStore: "resource:///modules/zen/ZenSessionManager.sys.mjs",
+  SessionStore: "resource:///modules/sessionstore/SessionStore.sys.mjs",
   TabStateCache: "resource:///modules/sessionstore/TabStateCache.sys.mjs",
   setTimeout: "resource://gre/modules/Timer.sys.mjs",
   PrivateBrowsingUtils: "resource://gre/modules/PrivateBrowsingUtils.sys.mjs",
@@ -64,6 +65,9 @@ const EVENTS = [
 
   "TabHide",
   "TabShow",
+
+  "TabBrowserDiscarded",
+  "SSTabRestoring",
 
   "ZenTabRemovedFromSplit",
   "ZenSplitViewTabsSplit",
@@ -1046,7 +1050,7 @@ class nsZenWindowSync {
    * @param {Function} filter - A function to filter the tabs.
    * @returns {object | null} The active tab from other windows if found, otherwise null.
    */
-  #getActiveTabFromOtherWindows(
+  getActiveTabFromOtherWindows(
     aWindow,
     aTabId,
     filter = tab => tab?._zenContentsVisible
@@ -1129,7 +1133,7 @@ class nsZenWindowSync {
         ? aPreviousTab.group.tabs
         : [aPreviousTab];
       for (const tab of tabsToSwap) {
-        const otherTabToShow = this.#getActiveTabFromOtherWindows(
+        const otherTabToShow = this.getActiveTabFromOtherWindows(
           aWindow,
           tab.id,
           t =>
@@ -1150,7 +1154,7 @@ class nsZenWindowSync {
       ) {
         continue;
       }
-      const otherSelectedTab = this.#getActiveTabFromOtherWindows(
+      const otherSelectedTab = this.getActiveTabFromOtherWindows(
         aWindow,
         selectedTab.id
       );
@@ -1163,6 +1167,11 @@ class nsZenWindowSync {
       }
     }
     await Promise.all(promises);
+    for (const selectedTab of activeTabs) {
+      if (selectedTab.linkedBrowser) {
+        lazy.SessionStore.maybeRestoreTabContent?.(selectedTab);
+      }
+    }
   }
 
   /**
@@ -1336,6 +1345,23 @@ class nsZenWindowSync {
     const isUnsyncedWindow = window.gZenWorkspaces.privateWindowOrDisabled;
     if (tab.id && !ignoreExistingId) {
       // This tab was opened as part of a sync operation.
+      const realTab = this.getActiveTabFromOtherWindows(
+        window,
+        tab.id,
+        t => t?._zenContentsVisible
+      );
+      if (realTab) {
+        if (realTab.hasAttribute("pending")) {
+          tab.setAttribute("pending", "true");
+        } else {
+          tab.removeAttribute("pending");
+        }
+        if (realTab.hasAttribute("discarded")) {
+          tab.setAttribute("discarded", "true");
+        } else {
+          tab.removeAttribute("discarded");
+        }
+      }
       return;
     }
     tab._zenContentsVisible = true;
@@ -1383,6 +1409,32 @@ class nsZenWindowSync {
       return;
     }
     return this.#delegateGenericSyncEvent(aEvent, SYNC_FLAG_LABEL);
+  }
+
+  on_TabBrowserDiscarded(aEvent) {
+    const tab = aEvent.target;
+    this.#runOnAllWindows(tab.ownerGlobal, win => {
+      const targetTab = this.getItemFromWindow(win, tab.id);
+      if (targetTab) {
+        if (tab.hasAttribute("pending")) {
+          targetTab.setAttribute("pending", "true");
+        }
+        if (tab.hasAttribute("discarded")) {
+          targetTab.setAttribute("discarded", "true");
+        }
+      }
+    });
+  }
+
+  on_SSTabRestoring(aEvent) {
+    const tab = aEvent.target;
+    this.#runOnAllWindows(tab.ownerGlobal, win => {
+      const targetTab = this.getItemFromWindow(win, tab.id);
+      if (targetTab) {
+        targetTab.removeAttribute("pending");
+        targetTab.removeAttribute("discarded");
+      }
+    });
   }
 
   on_TabHide(aEvent) {
